@@ -1,0 +1,12 @@
+{
+  "name": "municipalityCanada",
+  "version": "0.1.0",
+  "description": "Canadian municipality data in JSON format.",
+  "license": "MIT",
+  "author": "Resham Singh Lotay",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js"
+  }
+}
