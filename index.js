@@ -1,93 +1,162 @@
-import { upperTier, lowerTier } from "./rawData/ontario/muncipalities.js";
 import * as fs from "node:fs";
+import * as alberta from "./rawData/alberta/municipalities.js";
+import * as britishColumbia from "./rawData/british-columbia/municipalities.js";
+import * as manitoba from "./rawData/manitoba/municipalities.js";
+import * as newBrunswick from "./rawData/new-brunswick/municipalities.js";
+import * as newFoundlandAndLabrador from "./rawData/new-foundland-and-labrador/municipalities.js";
+import * as novaScotia from "./rawData/nova-scotia/municipalities.js";
+import * as ontario from "./rawData/ontario/muncipalities.js";
+import * as sasketchwan from "./rawData/sasketchwan/municipalities.js";
+import * as princeEdwardIsland from "./rawData/prince-edward-Island/municipalities.js";
+import * as northwestTerritories from "./rawData/northwest-territories/municipalities.js";
+import * as nunavut from "./rawData/nunavut/municipalities.js";
+import * as yukon from "./rawData/yukon/municipalities.js";
 
-const formattedLowerTierMunicipalities = [];
-const formattedUpperTierMunicipalities = [];
+const provincesAndTerritories = [
+  "ab",
+  "bc",
+  "mb",
+  "nb",
+  "nl",
+  "ns",
+  "on",
+  "sk",
+  "pe",
+  "nt",
+  "nu",
+  "yt",
+];
 
-lowerTier.forEach((record) => {
-  formattedLowerTierMunicipalities.push(formatLowerTierMunicipalities(record));
-});
+const structure = {
+  ab: ["name", "status"],
+  bc: ["name", "status", "regionalDistrict"],
+  mb: ["name", "status"],
+  nb: ["name", "status", "regionalServiceCommission"],
+  nl: ["name", "status"],
+  ns: ["name", "status", "county"],
+  on: ["name", "status", "censusDivision"],
+  sk: ["name", "status", "ruralMunicipality"],
+  pe: ["name", "status", "county"],
+  nt: ["name", "status"],
+  nu: ["name", "status"],
+  yt: ["name", "status", "officialName"],
+};
 
-formatUpperTierMunicipalities(formattedLowerTierMunicipalities);
+formatFromData(provincesAndTerritories, structure);
 
-writeToJSON(formattedUpperTierMunicipalities);
+function formatFromData(filterList, filterStructure) {
+  const data = [];
 
-function writeToJSON(data) {
-  const writeData = JSON.stringify(data);
+  filterList.forEach((element) => {
+    const dataStructure = filterStructure[element];
 
-  fs.writeFile("ontarioMunicipalities.json", writeData, "utf-8", (err) => {
-    if (err) {
-      console.log("There was an error write data to file.");
+    switch (element) {
+      case "ab":
+        data.push(organizeData(element, dataStructure, alberta));
+        break;
+
+      case "bc":
+        data.push(organizeData(element, dataStructure, britishColumbia));
+        break;
+
+      case "mb":
+        data.push(organizeData(element, dataStructure, manitoba));
+        break;
+
+      case "nb":
+        data.push(organizeData(element, dataStructure, newBrunswick));
+        break;
+
+      case "nl":
+        data.push(
+          organizeData(element, dataStructure, newFoundlandAndLabrador),
+        );
+        break;
+
+      case "ns":
+        data.push(organizeData(element, dataStructure, novaScotia));
+        break;
+
+      case "on":
+        data.push(organizeData(element, dataStructure, ontario));
+        break;
+
+      case "sk":
+        data.push(organizeData(element, dataStructure, sasketchwan));
+        break;
+
+      case "pe":
+        data.push(organizeData(element, dataStructure, princeEdwardIsland));
+        break;
+
+      case "nt":
+        data.push(organizeData(element, dataStructure, northwestTerritories));
+        break;
+
+      case "nu":
+        data.push(organizeData(element, dataStructure, nunavut));
+        break;
+
+      case "yt":
+        data.push(organizeData(element, dataStructure, yukon));
+        break;
+
+      default:
+        console.log("No more data");
+        break;
     }
-    console.log("Data written to file.");
   });
+
+  // console.log(JSON.stringify(data));
+  writeToFile(data);
 }
 
-function formatUpperTierMunicipalities(data) {
-  const municpalityNamesComplete = removeDuplicateMunicipalityNames(data);
-
-  const formattedData = [];
-
-  for (let i = 0; i < municpalityNamesComplete.length; i++) {
-    const members = [];
-
-    for (let j = 0; j < data.length; j++) {
-      if (data[j].partOf === municpalityNamesComplete[i]) {
-        members.push(data[j]);
-      }
-    }
-
-    formattedData.push({
-      divisionName: municpalityNamesComplete[i],
-      members: [...members],
-    });
-  }
-
-  formattedData.forEach((record) => {
-    if (upperTier.find((element) => element[0] === record.divisionName)) {
-      record.divisionType =
-        upperTier[
-          upperTier.findIndex((element) => element[0] === record.divisionName)
-        ][2];
-
-      record.tier =
-        upperTier[
-          upperTier.findIndex((element) => element[0] === record.divisionName)
-        ][1];
-    } else {
-      record.divisionType = "unknown";
-      record.tier = "unknown";
-    }
-  });
-
-  formattedData.forEach((element) =>
-    formattedUpperTierMunicipalities.push(element),
-  );
-}
-
-function formatLowerTierMunicipalities(data) {
+function organizeData(provinceOrTerritory, structure, data) {
   return {
-    mName: data[0],
-    tier: data[1],
-    mType: data[2],
-    partOf: data[3],
+    [provinceOrTerritory]: {
+      description: data.description,
+      municipalities: organizeMunicipalities(structure, data.municipalities),
+    },
   };
 }
 
-function removeDuplicateMunicipalityNames(rawData) {
-  const municipalityNames = [];
-  rawData.forEach((record) => municipalityNames.push(record.partOf));
+function organizeMunicipalities(structure, municipalities) {
+  const structuredMunicipalities = [];
 
-  const data = municipalityNames.toSorted();
-
-  const mNames = [];
-
-  for (let i = 0; i < data.length; i++) {
-    if ((data[i] === data[i + 1]) === data[i + 2]) {
-      data.shift();
-    } else if (data[i] !== data[i + 1]) {
-      mNames.push(data[i]);
+  for (let i = 0; i < municipalities.length; i++) {
+    const municipality = municipalities[i];
+    if (municipality.length == 2) {
+      structuredMunicipalities.push({
+        name: municipality[0],
+        status: municipality[1],
+      });
+    } else if (municipality.length == 1) {
+      structuredMunicipalities.push({
+        name: municipality[0],
+      });
+    } else if (municipality.length > 2) {
+      const extraInfo = {};
+      for (let i = 2; i < municipality.length; i++) {
+        extraInfo[structure[i]] = municipality[i];
+      }
+      structuredMunicipalities.push({
+        name: municipality[0],
+        status: municipality[1],
+        addInfo: extraInfo,
+      });
     }
   }
-  return mNames;
+
+  return structuredMunicipalities;
+}
+
+function writeToFile(data) {
+  const writeData = JSON.stringify(data);
+
+  fs.writeFile("municipalities.json", writeData, "utf-8", (err) => {
+    if (err) {
+      console.log("There was an error writing data to file.");
+    }
+    console.log("Data written to file.");
+  });
 }
